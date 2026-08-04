@@ -6,8 +6,8 @@
 
 | 用户指定 | 说明文件 | 脚本 |
 |---|---|---|
-| Cursor Agents Window | `prompt/skill/new-cursor-agent-session.md` | `prompt/skill/new_cursor_agent_session.sh` |
-| 默认、Cursor2 | `prompt/skill/new-cursor2-agent-session.md` | `prompt/skill/new_cursor2_agent_session.sh` |
+| 默认、Cursor Agents Window | `prompt/skill/new-cursor-agent-session.md` | `prompt/skill/new_cursor_agent_session.sh` |
+| Cursor2 | `prompt/skill/new-cursor2-agent-session.md` | `prompt/skill/new_cursor2_agent_session.sh` |
 | Cursor3 | `prompt/skill/new-cursor3-agent-session.md` | `prompt/skill/new_cursor3_agent_session.sh` |
 | Cursor4 | `prompt/skill/new-cursor4-agent-session.md` | `prompt/skill/new_cursor4_agent_session.sh` |
 | Cursor5 | `prompt/skill/new-cursor5-agent-session.md` | `prompt/skill/new_cursor5_agent_session.sh` |
@@ -15,7 +15,7 @@
 | ZCode | `prompt/skill/new-zcode-session.md` | `prompt/skill/new_zcode_session.sh` |
 | Codex | `prompt/skill/new-codex-session.md` | `prompt/skill/new_codex_session.sh` |
 
-源文件位于本 skill 的 `sessions/`。生成任务时只需准备用户选择的后端；用户未指定时准备 Cursor2。
+源文件位于本 skill 的 `sessions/`。生成任务时只需准备用户选择的后端；用户未指定时准备 Cursor Agents Window。
 
 ## 准备规则
 
@@ -27,17 +27,17 @@
 
 ## 启动示例
 
-默认 Cursor2：
-
-```bash
-bash prompt/skill/new_cursor2_agent_session.sh -w "$(pwd)" \
-  "Please execute docs/<slug>/<slug>-task.md Task 1."
-```
-
-Cursor Agents Window：
+默认 Cursor Agents Window：
 
 ```bash
 bash prompt/skill/new_cursor_agent_session.sh -w "$(pwd)" \
+  "Please execute docs/<slug>/<slug>-task.md Task 1."
+```
+
+Cursor2：
+
+```bash
+bash prompt/skill/new_cursor2_agent_session.sh -w "$(pwd)" \
   "Please execute docs/<slug>/<slug>-task.md Task 1."
 ```
 
