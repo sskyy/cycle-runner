@@ -114,6 +114,10 @@ docs/agent-project-profile.md
 - 实现轮不能将里程碑标记为已完成。
 - 审计发现验证缺口时，先加强验证并立即复验；产品实现仍通过时不退回里程碑。
 - 审计退回实现时必须给出下一轮的具体工作。
+- 真实实现缺陷导致`待审`→`开放`时累计 milestone reopen；纯验证缺口和原本`开放`不计。
+- 同一领域第二次 reopen 触发 `domain-review`，同一里程碑第三次 reopen 触发 `milestone-review`。
+- 收敛审计只在现有 audit 文件顶部维护四段式 `Convergence Note`，不得增加新的流程文件。
+- 收敛模式下实现轮必须按 Note 的实施批次推进，并通过全部 Closure gates 后才能再次标记`待审`。
 - 目标不可实现和协议预算耗尽的终止语义。
 
 ### 6. 自检
@@ -133,6 +137,8 @@ test -f <SESSION_SKILL>
 - 任务路径和会话启动路径存在。
 - 启动链路为：初稿 → 设计评审 → 设计裁决 → 实现 → 审计。
 - 设计通过后自动启动实现，不等待人工确认。
+- 设计头和每个里程碑包含 reopen 计数；审计协议包含双触发收敛规则。
+- `Convergence Note` 固定在 audit 文件中且只有 Remaining closure map、Root cause and scope、Next implementation batch、Closure gates 四部分。
 - 没有旧任务名称、旧归档路径或其它项目的残留内容。
 
 ### 7. 交付
