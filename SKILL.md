@@ -1,6 +1,6 @@
 ---
 name: cyclic-task-prompt
-description: 将复杂软件任务转换为由独立会话交替执行的设计、评审、实现和审计任务文档。适用于生成循环任务、收敛任务、任务协议或 docs/<slug>/<slug>-task.md，并负责准备新会话启动脚本。
+description: 将复杂软件任务转换为由独立会话交替执行的设计、评审、实现和审计任务文档。适用于生成循环任务、收敛任务、任务协议或 docs/<slug>/<slug>-task.md。任务文档中的各个任务可以分别指定会话后端与启动参数。本地 GUI 会话启动交给 launch-local-agent-session；本 skill 只负责把任务用到的后端 ensure 进仓库并写入任务文件。
 ---
 
 # 循环任务文档生成
@@ -11,9 +11,9 @@ description: 将复杂软件任务转换为由独立会话交替执行的设计�
 
 - **Task 1**：设计初稿，完成后启动 additional task 1。
 - **additional task 1**：设计评审，完成后启动 additional task 2。
-- **additional task 2**：设计裁决；按任务内写明的分支启动 additional task 1、additional task 3，或终止。
+- **additional task 2**：设计裁决；按任务内写明的分支启动 additional task 1、additional task 3，或执行生成时写死的终止句。
 - **additional task 3**：实现，完成后一律启动 additional task 4。
-- **additional task 4**：实现审计；按任务内写明的分支启动 additional task 3，或终止。
+- **additional task 4**：实现审计；按任务内写明的分支启动 additional task 3，或执行生成时写死的终止句。
 
 设计循环最多 15 轮；实现循环总预算为初始里程碑数乘以 5。目的是通过新的上下文和独立立场提高工作质量，同时保持持续推进。不要求设计阶段证明所有实现细节，也不为每个任务建立额外的流程管理系统。
 
@@ -25,7 +25,8 @@ description: 将复杂软件任务转换为由独立会话交替执行的设计�
 | 任务模板 | 本 skill 的 `assets/protocol-template.md` |
 | 画像规范 | 本 skill 的 `references/project-profile-schema.md` |
 | 会话后端说明 | 本 skill 的 `references/session-backends.md` |
-| 会话启动文件源 | 本 skill 的 `sessions/` |
+| 本地会话启动文件源 | `~/.agents/skills/launch-local-agent-session/`（说明见该 skill） |
+| 云端会话启动文件源 | 本 skill 的 `sessions/spawn-cloud-agent-session.md` 与 `spawn_cloud_agent.sh` |
 | 仓库内会话启动文件 | `prompt/skill/` |
 | 任务文件 | `docs/<slug>/<slug>-task.md` |
 | 设计文档 | `docs/<slug>/<slug>.md` |
@@ -41,8 +42,13 @@ description: 将复杂软件任务转换为由独立会话交替执行的设计�
 
 - `slug`：使用 kebab-case。
 - 任务标题：简短、准确，不包含实现细节。
-- 会话后端：用户未指定时使用 Cursor Agents Window。
+- 会话后端：每个任务可以分别指定后端与启动参数。
+  - 默认后端：用户未指定时为 Cursor Agents Window，无启动参数。
+  - 任务级映射：按用户指定整理 additional task 1–4（设计评审、设计裁决、实现、审计）各自的后端与启动参数；未单独指定的任务使用默认后端。Task 1 的后端与启动参数只决定首个启动命令，不写入任务文件。
+  - 启动参数只能使用所选后端说明文件「用法」段支持的选项（见 `references/session-backends.md` 的「启动参数」）。参数中没有 `-w` 时，启动方按启动示例补 `-w "$(pwd)"`；写入其它 workspace 时必须保证新会话仍能读到任务文件。
+  - 有队列文档时确定队列接力后端与启动参数；未单独指定时使用默认后端。
 - 是否立即启动：默认只生成任务文件；只有用户明确要求时才启动首个会话。
+- 队列文档：可选。仅当用户、生成 prompt 或任务说明给出监督/队列文档路径（含 `queue:`）时启用。未给出则终止行为与无队列时相同，不得猜测。
 
 若同名任务目录已经存在：
 
@@ -86,9 +92,17 @@ docs/agent-project-profile.md
 
 ### 4. 准备会话后端
 
-阅读 `references/session-backends.md`，只将本次选择的后端文件从 `sessions/` 复制到仓库 `prompt/skill/`。文件已存在且可用时不覆盖；缺失时复制，并为 shell 脚本增加执行权限。
+阅读 `references/session-backends.md`。对本次运行用到的每个不同后端各准备一次：additional task 1–4 的任务级映射、Task 1 的首启后端，以及有队列时的队列接力后端。本地后端（Cursor / Cursor2–5 / Codex / ZCode / Waku / Zed / Claude）从 `launch-local-agent-session` ensure 进仓库，不要再从本 skill 的 `sessions/` 复制：
 
-`{{SESSION_SKILL}}` 使用仓库相对路径。
+```bash
+# 任务用到的每个本地后端各执行一次
+bash "$HOME/.agents/skills/launch-local-agent-session/scripts/ensure-into-repo.sh" \
+  -C "$(pwd)" <backend>
+```
+
+`launch-local-agent-session` 不存在时，才回退到本 skill `sessions/` 里的同名文件。云端后端仍从本 skill 的 `sessions/` 复制。目标文件已存在且可用时不覆盖；缺失时复制，并为 shell 脚本增加执行权限。
+
+`{{SESSION_SKILL_*}}` 使用各自说明文件的仓库相对路径。
 
 ### 5. 生成任务文件
 
@@ -102,8 +116,40 @@ docs/agent-project-profile.md
 | `{{TASK_TITLE}}` | 任务标题 |
 | `{{TASK_BODY}}` | 背景和编号要求 |
 | `{{TASK_NOTES}}` | 任务特定的调查、验证和范围说明 |
-| `{{SESSION_SKILL}}` | 会话后端说明文件的仓库相对路径 |
-| `{{GENERATION_STAMP}}` | `generated-by: cyclic-task-prompt | template-sha256: <前12位> | generated-at: <YYYY-MM-DD>` |
+| `{{SESSION_SKILL_REVIEW}}` / `{{SESSION_ARGS_REVIEW}}` | additional task 1（设计评审）的后端说明文件仓库相对路径 / 启动参数后缀。模板中各出现两处（Task 1 启动与裁决退回），同名占位符全局同值 |
+| `{{SESSION_SKILL_ADJUDICATE}}` / `{{SESSION_ARGS_ADJUDICATE}}` | additional task 2（设计裁决）的后端说明文件仓库相对路径 / 启动参数后缀 |
+| `{{SESSION_SKILL_IMPL}}` / `{{SESSION_ARGS_IMPL}}` | additional task 3（实现）的后端说明文件仓库相对路径 / 启动参数后缀。模板中各出现两处（裁决通过与审计退回），同名占位符全局同值 |
+| `{{SESSION_SKILL_AUDIT}}` / `{{SESSION_ARGS_AUDIT}}` | additional task 4（审计）的后端说明文件仓库相对路径 / 启动参数后缀 |
+| `{{GENERATION_STAMP}}` | `generated-by: cyclic-task-prompt | template-sha256: <前12位> | generated-at: <YYYY-MM-DD>`；若有队列文档，再追加 queue 路径字段 |
+| `{{QUEUE_HEADER}}` | 若有队列文档：`queue: <路径>` 加一个换行；否则空字符串 |
+| `{{ON_TERMINATE}}` | 生成时写死的终止句，见下。运行时不得再根据头部推断 |
+
+`{{SESSION_ARGS_*}}` 只有两种取值，替换后不得残留占位符：
+
+- 该任务无启动参数：`，启动参数：`-w "$(pwd)"``（本地后端默认显式携带工作目录；见下）。
+- 有启动参数：中文逗号加「启动参数：」加反引号包住的 flag 串，flag 按原样保留；本地后端的 flag 串**必须**含 `-w "$(pwd)"`（用户显式指定其它目录时写该目录），无 `-w` 支持的云端后端不受此约束：
+
+```text
+，启动参数：`-w "$(pwd)" --harness claude --model claude-sonnet-4-6`
+```
+
+替换后的启动句读作「**使用 `prompt/skill/new-waku-session.md` 中的方法来启动新的 chat，启动参数：`-w "$(pwd)" --harness claude --model claude-sonnet-4-6`。**」。后续会话执行启动句时，把这些 flag 原样放在脚本参数中、prompt 之前。
+
+**为什么 `-w` 必须写进任务文件**（2026-09-05，controller-retention 任务实测）：本地后端的新建会话命令（如 ZCode `NewTask`/`Cmd+N`）不接受路径，新会话落在**当前前台 workspace**。若调度会话执行启动句时前台不是本仓库（侧边栏停在其它项目），下一轮会开进错误的仓库。`-w` 先经深链切到指定目录再新建会话，使目录正确成为机制保证而非「前台恰好是对的」；`$(pwd)` 由执行启动句的会话在仓库根展开，与任务文件同目录。极少数前台确定无疑的场景也不得省略——省略会让目录正确性退回巧合。
+
+`{{ON_TERMINATE}}` 必须已不含占位符。无队列文档时使用：
+
+```text
+终止，不启动新的 chat。
+```
+
+有队列文档时，把尖括号内容换成本次实际值（队列接力后端的说明文件路径与启动参数后缀，后缀格式同 `{{SESSION_ARGS_*}}`、本地后端不可为空），使用：
+
+```text
+使用 `Please execute <队列文档>` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `<队列接力后端说明文件>` 中的方法来启动新的 chat<启动参数后缀>。**
+```
+
+additional task 2 与 additional task 4 的全部终止出口都使用该句，包括 `已完成`、`不可实现`、`协议失败`。
 
 生成时只创建任务目录和任务文件。设计、评审、审计、运行记录及测试资产由后续会话创建。
 
@@ -121,7 +167,7 @@ docs/agent-project-profile.md
 - 同一领域第二次 reopen 触发 `domain-review`，同一里程碑第三次 reopen 触发 `milestone-review`。
 - 收敛审计只在现有 audit 文件顶部维护四段式 `Convergence Note`，不得增加新的流程文件。
 - 收敛模式下实现轮必须按 Note 的实施批次推进，并通过全部 Closure gates 后才能再次标记`待审`。
-- 目标不可实现和协议预算耗尽的终止语义。
+- 目标不可实现和协议预算耗尽的终止语义；终止后执行哪一句由生成时的 `{{ON_TERMINATE}}` 写死。
 
 ### 6. 自检
 
@@ -130,20 +176,23 @@ docs/agent-project-profile.md
 ```bash
 rg -n "\{\{" docs/<slug>/<slug>-task.md
 test -f docs/agent-project-profile.md
-test -f <SESSION_SKILL>
+test -f <后端说明文件>   # 任务文件用到的每个说明文件各一次，含队列接力后端
 ```
 
 并人工确认：
 
 - 项目画像已完整嵌入。
 - 任务要求编号连续、边界明确。
-- 任务路径和会话启动路径存在。
+- 任务路径和全部会话启动文件（说明文件与脚本）存在。
+- 每个启动出口的说明文件与启动参数符合任务级映射；启动参数只含对应说明文件「用法」段支持的选项。
 - 任务结构为：共享规范 → Task 1 → additional task 1 → 2 → 3 → 4；每个任务末尾写明下一步启动谁。
 - 启动链路为：初稿 → 设计评审 → 设计裁决 → 实现 → 审计。
 - 设计通过后自动启动实现，不等待人工确认。
 - 设计头和每个里程碑包含 reopen 计数；审计任务包含双触发收敛规则。
 - `Convergence Note` 固定在 audit 文件中且只有 Remaining closure map、Root cause and scope、Next implementation batch、Closure gates 四部分。
 - 没有旧任务名称、旧归档路径或其它项目的残留内容。
+- 无队列时：四处终止出口均为「终止，不启动新的 chat」；任务文件头部没有 `queue:`。
+- 有队列时：任务文件头部有 `queue: <路径>`；四处终止出口均启动该路径、使用队列接力后端与其启动参数，且不含「终止，不启动新的 chat」。
 
 ### 7. 交付
 
@@ -151,8 +200,9 @@ test -f <SESSION_SKILL>
 
 - 任务文件路径。
 - 使用的项目画像路径。
-- 会话后端。
+- 各任务的会话后端与启动参数；未按任务区分时写明统一后端。有队列时含队列接力后端。
 - 模板哈希。
+- 队列文档路径；无队列时写明无。
 - 是否已启动首个会话。
 
 用户未要求启动时，不得自行启动。
@@ -163,10 +213,12 @@ test -f <SESSION_SKILL>
 Please execute docs/<slug>/<slug>-task.md Task 1.
 ```
 
+启动首个会话时使用 Task 1 的后端与启动参数。
+
 ## 维护原则
 
 - 每个任务文件固定使用生成时的模板快照。运行期间不得同步新版模板。
 - 旧任务保持原样；模板变更只影响新生成的任务。
 - 模板改进以多个运行的复盘证据为依据，不因单个任务的局部问题增加全局规则。
-- 任务之间如何接力必须直白写在 Task / additional task 内；不要改回需要模型推理的抽象循环协议。
+- 任务之间如何接力必须直白写在 Task / additional task 内；不要改回需要模型推理的抽象循环协议。队列接力同样写死在终止句里，不要写成「若头部有 queue 再决定」。
 - 项目特定的状态表、清单、参考函数或验证程序应留在任务设计中，不应加入全局模板。

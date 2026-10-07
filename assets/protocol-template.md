@@ -1,5 +1,5 @@
 <!-- {{GENERATION_STAMP}} -->
-{{PROJECT_PROFILE}}
+{{QUEUE_HEADER}}{{PROJECT_PROFILE}}
 
 ### 共同原则
 
@@ -144,7 +144,7 @@ next-action: <下一实现轮首先完成的具体工作；没有时写“无”
 4. 建立里程碑，状态全部为 `开放`，`reopen-count: 0`、`reopen-domains` 为空。
 5. 只完成设计和必要的验证实验，不编写生产实现。
 6. 覆盖写入 `retro.md` 的运行标题和生成印记。
-7. 不要执行下面任何 additional task。使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 1.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL}}` 中的方法来启动新的 chat。**
+7. 不要执行下面任何 additional task。使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 1.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL_REVIEW}}` 中的方法来启动新的 chat{{SESSION_ARGS_REVIEW}}。**
 
 ### additional task 1
 
@@ -166,7 +166,7 @@ next-action: <下一实现轮首先完成的具体工作；没有时写“无”
    - `需要修订`
    - `目标不可实现`
 6. 不修改设计文档。
-7. 使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 2.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL}}` 中的方法来启动新的 chat。**
+7. 使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 2.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL_ADJUDICATE}}` 中的方法来启动新的 chat{{SESSION_ARGS_ADJUDICATE}}。**
 
 ### additional task 2
 
@@ -179,10 +179,10 @@ next-action: <下一实现轮首先完成的具体工作；没有时写“无”
 5. 更新设计文档，并执行所有设计期验收命令和最小验证实验。
 6. `d` 增加 1；向 `retro.md` 追加一行：轮次、评审结论、采纳的问题类别、主要证据和下一步。
 7. 按顺序评估并执行（只走命中的第一条分支）：
-  - 若有充分证据证明 Task 的核心目标在当前技术、权限或运行环境下不可实现：设置 `status: 不可实现`，在 `retro.md` 写明证据后终止，不启动新的 chat。
-  - 若本轮没有采纳任何「需要复审的问题」：设计通过。设置 `status: 实现中`，以初始里程碑数计算 `N = 5 × M`，然后使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 3.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL}}` 中的方法来启动新的 chat。**
-  - 若有采纳问题且 `d < 15`：使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 1.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL}}` 中的方法来启动新的 chat。**
-  - 若 `d = 15`：完成一次全局修订和六类条件自检。不存在已知阻塞问题时按上面的设计通过分支进入实现；仍存在已知阻塞问题时设置 `status: 协议失败`，记录原因并终止，不启动新的 chat。不得自行提高预算或要求用户选择方案。
+  - 若有充分证据证明 Task 的核心目标在当前技术、权限或运行环境下不可实现：设置 `status: 不可实现`，在 `retro.md` 写明证据。{{ON_TERMINATE}}
+  - 若本轮没有采纳任何「需要复审的问题」：设计通过。设置 `status: 实现中`，以初始里程碑数计算 `N = 5 × M`，然后使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 3.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL_IMPL}}` 中的方法来启动新的 chat{{SESSION_ARGS_IMPL}}。**
+  - 若有采纳问题且 `d < 15`：使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 1.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL_REVIEW}}` 中的方法来启动新的 chat{{SESSION_ARGS_REVIEW}}。**
+  - 若 `d = 15`：完成一次全局修订和六类条件自检。不存在已知阻塞问题时按上面的设计通过分支进入实现；仍存在已知阻塞问题时设置 `status: 协议失败`，记录原因。{{ON_TERMINATE}}不得自行提高预算或要求用户选择方案。
 
 ### additional task 3
 
@@ -196,7 +196,7 @@ next-action: <下一实现轮首先完成的具体工作；没有时写“无”
 6. 执行受本轮修改影响的项目基础检查。任务开始前已经失败的检查以基线记录为准；不得新增失败，也不得以同名旧失败掩盖不同的新原因。
 7. `k` 增加 1，更新 `implementation-round: k/N`。
 8. 不得把里程碑标记为 `已完成`。
-9. 本轮结束时**一律**使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 4.` 作为 prompt 启动新的 chat（无论你认为完成与否，都交给审计轮判定，不再自行连续启动 additional task 3）。只要启动就可以结束，不需要等待。**使用 `{{SESSION_SKILL}}` 中的方法来启动新的 chat。**
+9. 本轮结束时**一律**使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 4.` 作为 prompt 启动新的 chat（无论你认为完成与否，都交给审计轮判定，不再自行连续启动 additional task 3）。只要启动就可以结束，不需要等待。**使用 `{{SESSION_SKILL_AUDIT}}` 中的方法来启动新的 chat{{SESSION_ARGS_AUDIT}}。**
 
 ### additional task 4
 
@@ -218,6 +218,6 @@ next-action: <下一实现轮首先完成的具体工作；没有时写“无”
   - 存在实现缺陷：将里程碑标记为 `开放`；若原状态为`待审`则增加 reopen 计数。普通模式在 `next-action` 写明具体修改、失败命令、涉及位置和完成条件；收敛模式则令 `next-action` 指向 `Convergence Note` 的下一实施批次。
   - 当前里程碑原本为 `开放`且实现轮未取得通过：给出明确诊断和下一步，不得只写一般性建议。
 11. 按顺序评估并执行（只走命中的第一条分支）：
-  - 全部里程碑已完成：执行一次最终核验（全部里程碑验收命令、Task 要求逐项检查以及项目要求的基础测试）。全部通过后设置 `status: 已完成`，按「运行记录」完成 `retro.md` 并终止，不启动新的 chat。
-  - 未完成且 `k < N`：使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 3.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL}}` 中的方法来启动新的 chat。**
-  - 未完成且 `k >= N`：若有证据证明核心目标不可实现，设置 `status: 不可实现`；否则设置 `status: 协议失败`。按「运行记录」完成 `retro.md` 后终止，不启动新的 chat。不得自行增加预算或要求用户决定下一步。
+  - 全部里程碑已完成：执行一次最终核验（全部里程碑验收命令、Task 要求逐项检查以及项目要求的基础测试）。全部通过后设置 `status: 已完成`，按「运行记录」完成 `retro.md`。{{ON_TERMINATE}}
+  - 未完成且 `k < N`：使用 `Please execute {{DOC_DIR}}/{{SLUG}}-task.md Task 1 additional task 3.` 作为 prompt 启动一个新的 chat，只要启动你自己就可以结束了，不需要等待。**使用 `{{SESSION_SKILL_IMPL}}` 中的方法来启动新的 chat{{SESSION_ARGS_IMPL}}。**
+  - 未完成且 `k >= N`：若有证据证明核心目标不可实现，设置 `status: 不可实现`；否则设置 `status: 协议失败`。按「运行记录」完成 `retro.md`。{{ON_TERMINATE}}不得自行增加预算或要求用户决定下一步。
