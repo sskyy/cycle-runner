@@ -99,4 +99,4 @@ curl -sS -u "${CURSOR_API_KEY}:" "https://api.cursor.com/v1/agents?limit=20"
 
 ## 备注
 
-脚本本身（`scripts/spawn_cloud_agent.sh`）靠 `git remote get-url origin` 自动推断仓库，与具体仓库无关，已在 doc0 仓库端到端验证可用。本仓库首次使用前建议先用 `GET /v1/me` 验证 key 可用。
+脚本本身（同目录的 `spawn_cloud_agent.sh`）靠 `git remote get-url origin` 自动推断仓库，与具体仓库无关，已在 doc0 仓库端到端验证可用。本仓库首次使用前建议先用 `GET /v1/me` 验证 key 可用。

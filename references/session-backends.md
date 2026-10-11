@@ -4,23 +4,25 @@
 
 ## 后端
 
+下表的说明文件与脚本 ensure 后位于目标仓库的 `prompt/skill/`。
+
 | 用户指定 | 说明文件 | 脚本 |
 |---|---|---|
-| 默认、Cursor Agents Window | `prompt/skill/new-cursor-agent-session.md` | `prompt/skill/new_cursor_agent_session.sh` |
-| Cursor2 | `prompt/skill/new-cursor2-agent-session.md` | `prompt/skill/new_cursor2_agent_session.sh` |
-| Cursor3 | `prompt/skill/new-cursor3-agent-session.md` | `prompt/skill/new_cursor3_agent_session.sh` |
-| Cursor4 | `prompt/skill/new-cursor4-agent-session.md` | `prompt/skill/new_cursor4_agent_session.sh` |
-| Cursor5 | `prompt/skill/new-cursor5-agent-session.md` | `prompt/skill/new_cursor5_agent_session.sh` |
-| Cursor Cloud | `prompt/skill/spawn-cloud-agent-session.md` | `prompt/skill/spawn_cloud_agent.sh` |
-| ZCode | `prompt/skill/new-zcode-session.md` | `prompt/skill/new_zcode_session.sh` |
-| Codex | `prompt/skill/new-codex-session.md` | `prompt/skill/new_codex_session.sh` |
-| Waku | `prompt/skill/new-waku-session.md` | `prompt/skill/new_waku_session.sh` |
-| Zed | `prompt/skill/new-zed-session.md` | `prompt/skill/new_zed_session.sh` |
-| Claude（桌面 Code session） | `prompt/skill/new-claude-session.md` | `prompt/skill/new_claude_session.sh` |
+| 默认、Cursor Agents Window | `new-cursor-agent-session.md` | `new_cursor_agent_session.sh` |
+| Cursor2 | `new-cursor2-agent-session.md` | `new_cursor2_agent_session.sh` |
+| Cursor3 | `new-cursor3-agent-session.md` | `new_cursor3_agent_session.sh` |
+| Cursor4 | `new-cursor4-agent-session.md` | `new_cursor4_agent_session.sh` |
+| Cursor5 | `new-cursor5-agent-session.md` | `new_cursor5_agent_session.sh` |
+| Cursor Cloud | `spawn-cloud-agent-session.md` | `spawn_cloud_agent.sh` |
+| ZCode | `new-zcode-session.md` | `new_zcode_session.sh` |
+| Codex | `new-codex-session.md` | `new_codex_session.sh` |
+| Waku | `new-waku-session.md` | `new_waku_session.sh` |
+| Zed | `new-zed-session.md` | `new_zed_session.sh` |
+| Claude（桌面 Code session） | `new-claude-session.md` | `new_claude_session.sh` |
 
 源文件：
 
-- 本地后端（Cursor / Cursor2–5 / Codex / ZCode / Waku / Zed / Claude）的权威位置是 `~/.agents/skills/launch-local-agent-session/`。生成任务时用该 skill 的 `scripts/ensure-into-repo.sh` 把所选后端拷进 `prompt/skill/`。
+- 本地后端（Cursor / Cursor2–5 / Codex / ZCode / Waku / Zed / Claude）的权威位置是 `~/.agents/skills/launch-local-agent-session/`。生成任务时用 `~/.agents/skills/launch-local-agent-session/scripts/ensure-into-repo.sh` 把所选后端拷进 `prompt/skill/`。
 - 云端后端的权威位置仍是本 skill 的 `sessions/`。
 - 本 skill `sessions/` 里仍留有本地后端的副本，仅在 `launch-local-agent-session` 尚未安装时回退使用。
 

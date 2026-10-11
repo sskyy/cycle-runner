@@ -12,7 +12,7 @@
 
 ## 调研结论（为什么用 launch link，而不是粘贴）
 
-Waku 的正式契约是 `docs/deeplink.md`（应用内）。一条 URL 同时完成选项目、选
+Waku 的正式契约是 Waku 应用内的 deeplink 文档（docs/deeplink.md）。一条 URL 同时完成选项目、选
 harness/model/effort，以及（若带 `prompt`）按发送键路径提交：
 
 ```
