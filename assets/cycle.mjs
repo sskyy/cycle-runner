@@ -15,6 +15,7 @@
 //   node cycle.mjs <doc-dir> ledger set <id> <status> [note...]
 //   node cycle.mjs <doc-dir> ledger list [status]
 //   node cycle.mjs <doc-dir> progress append <value>      # progress only if the move is >= progress-step
+//   node cycle.mjs <doc-dir> progress hold <value>        # value recorded, no-progress counter untouched (a defect card closed)
 //   node cycle.mjs <doc-dir> progress rebaseline <value>
 //   node cycle.mjs <doc-dir> cycle advance
 //
@@ -257,7 +258,7 @@ function lastValue(series) {
 
 function progressCmd(p, args) {
   const [sub, raw] = args;
-  if (!['append', 'rebaseline'].includes(sub)) fail('progress append|rebaseline <value>');
+  if (!['append', 'hold', 'rebaseline'].includes(sub)) fail('progress append|hold|rebaseline <value>');
   const value = Number(raw);
   if (!Number.isFinite(value)) fail(`progress value must be a number, got ${raw}`);
   const header = readHeader(p.design);
@@ -272,6 +273,11 @@ function progressCmd(p, args) {
     noProgress = 0;
     header.fields.set('no-progress-cycles', '0');
     verdict = 'REBASELINE';
+  } else if (sub === 'hold') {
+    series = series ? `${series}, ${value}` : `${value}`;
+    noProgress = 0;
+    header.fields.set('no-progress-cycles', '0');
+    verdict = 'HOLD';
   } else {
     series = series ? `${series}, ${value}` : `${value}`;
     if (prev === null) verdict = 'FIRST';
