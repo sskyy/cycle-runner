@@ -15,7 +15,7 @@
 //   node cycle.mjs <doc-dir> ledger set <id> <status> [note...]
 //   node cycle.mjs <doc-dir> ledger list [status]
 //   node cycle.mjs <doc-dir> progress append <value>      # progress only if the move is >= progress-step
-//   node cycle.mjs <doc-dir> progress hold <value>        # value recorded, no-progress counter untouched (a defect card closed)
+//   node cycle.mjs <doc-dir> progress hold <value>        # value recorded with a '~' mark, counter untouched; once per milestone segment
 //   node cycle.mjs <doc-dir> progress rebaseline <value>  # contract-definition defect; refused on the 3rd within a milestone
 //   node cycle.mjs <doc-dir> progress reset <value>       # milestone switch: starts a new segment ('||'), counter reset
 //   node cycle.mjs <doc-dir> cycle advance
@@ -254,7 +254,7 @@ function parseProgress(value) {
 
 function lastValue(series) {
   const segs = series.split('|').filter((seg) => seg.trim() !== '');
-  const last = (segs[segs.length - 1] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const last = (segs[segs.length - 1] || '').split(',').map((s) => s.trim().replace(/~$/, '')).filter(Boolean);
   return last.length ? Number(last[last.length - 1]) : null;
 }
 
@@ -284,10 +284,10 @@ function progressCmd(p, args) {
     header.fields.set('no-progress-cycles', '0');
     verdict = 'RESET (new milestone segment)';
   } else if (sub === 'hold') {
-    series = series ? `${series}, ${value}` : `${value}`;
-    noProgress = 0;
-    header.fields.set('no-progress-cycles', '0');
-    verdict = 'HOLD';
+    const currentMilestone = series.split('||').pop();
+    if (/~/.test(currentMilestone)) fail('hold already used in this milestone: record the value with `progress append`');
+    series = series ? `${series}, ${value}~` : `${value}~`;
+    verdict = 'HOLD (counter untouched)';
   } else {
     series = series ? `${series}, ${value}` : `${value}`;
     if (prev === null) verdict = 'FIRST';
