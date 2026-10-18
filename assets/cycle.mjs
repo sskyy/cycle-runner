@@ -16,7 +16,8 @@
 //   node cycle.mjs <doc-dir> ledger list [status]
 //   node cycle.mjs <doc-dir> progress append <value>      # progress only if the move is >= progress-step
 //   node cycle.mjs <doc-dir> progress hold <value>        # value recorded, no-progress counter untouched (a defect card closed)
-//   node cycle.mjs <doc-dir> progress rebaseline <value>
+//   node cycle.mjs <doc-dir> progress rebaseline <value>  # contract-definition defect; refused on the 3rd within a milestone
+//   node cycle.mjs <doc-dir> progress reset <value>       # milestone switch: starts a new segment ('||'), counter reset
 //   node cycle.mjs <doc-dir> cycle advance
 //
 // <doc-dir> is docs/<slug>; the design doc is docs/<slug>/<slug>.md and the
@@ -198,6 +199,7 @@ function ledgerCmd(p, args) {
     if (!id || !kind || !target || textParts.length === 0) fail('ledger add <id> <kind> <target> <text...>');
     if (!LEDGER_KINDS.includes(kind)) fail(`kind must be one of ${LEDGER_KINDS.join(', ')}`);
     if (ledger.rows.some((r) => r.id === id)) fail(`ledger id ${id} already exists`);
+    if (kind === 'blocking' && !/^(D-\d+|R-\d+|M-\d+|契约[:：].+|C-\d+)/.test(target)) fail(`blocking items must attack a D-n, R-n, M-n or 契约:<name>; got "${target}"`);
     const status = kind === 'blocking' ? 'open' : 'note';
     const row = `| ${id} | ${currentRound(p)} | ${kind} | ${esc(target)} | ${esc(textParts.join(' '))} | ${status} | |`;
     let text = ledger.text;
@@ -251,14 +253,14 @@ function parseProgress(value) {
 }
 
 function lastValue(series) {
-  const segs = series.split('|');
-  const last = segs[segs.length - 1].split(',').map((s) => s.trim()).filter(Boolean);
+  const segs = series.split('|').filter((seg) => seg.trim() !== '');
+  const last = (segs[segs.length - 1] || '').split(',').map((s) => s.trim()).filter(Boolean);
   return last.length ? Number(last[last.length - 1]) : null;
 }
 
 function progressCmd(p, args) {
   const [sub, raw] = args;
-  if (!['append', 'hold', 'rebaseline'].includes(sub)) fail('progress append|hold|rebaseline <value>');
+  if (!['append', 'hold', 'rebaseline', 'reset'].includes(sub)) fail('progress append|hold|rebaseline|reset <value>');
   const value = Number(raw);
   if (!Number.isFinite(value)) fail(`progress value must be a number, got ${raw}`);
   const header = readHeader(p.design);
@@ -268,11 +270,19 @@ function progressCmd(p, args) {
   let noProgress = Number(header.fields.get('no-progress-cycles') || 0);
   let verdict;
   if (sub === 'rebaseline') {
+    const currentMilestone = series.split('||').pop();
+    const inMilestone = (currentMilestone.match(/\|/g) || []).length;
+    if (inMilestone >= 2) fail('third rebaseline in this milestone refused: record the value with `progress append` (counts as no progress) and make the structural change a completion condition');
     series = series ? `${series} | ${value}` : `${value}`;
     header.fields.set('rebaselines', String(Number(header.fields.get('rebaselines') || 0) + 1));
     noProgress = 0;
     header.fields.set('no-progress-cycles', '0');
-    verdict = 'REBASELINE';
+    verdict = `REBASELINE #${inMilestone + 1} in this milestone`;
+  } else if (sub === 'reset') {
+    series = series ? `${series} || ${value}` : `${value}`;
+    noProgress = 0;
+    header.fields.set('no-progress-cycles', '0');
+    verdict = 'RESET (new milestone segment)';
   } else if (sub === 'hold') {
     series = series ? `${series}, ${value}` : `${value}`;
     noProgress = 0;
