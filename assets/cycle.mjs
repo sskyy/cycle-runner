@@ -269,6 +269,8 @@ function progressCmd(p, args) {
   if (sub === 'rebaseline') {
     series = series ? `${series} | ${value}` : `${value}`;
     header.fields.set('rebaselines', String(Number(header.fields.get('rebaselines') || 0) + 1));
+    noProgress = 0;
+    header.fields.set('no-progress-cycles', '0');
     verdict = 'REBASELINE';
   } else {
     series = series ? `${series}, ${value}` : `${value}`;
