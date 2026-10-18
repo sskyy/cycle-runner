@@ -14,7 +14,7 @@
 //   node cycle.mjs <doc-dir> ledger add <id> <kind> <target> <text...>
 //   node cycle.mjs <doc-dir> ledger set <id> <status> [note...]
 //   node cycle.mjs <doc-dir> ledger list [status]
-//   node cycle.mjs <doc-dir> progress append <value>
+//   node cycle.mjs <doc-dir> progress append <value>      # progress only if the move is >= progress-step
 //   node cycle.mjs <doc-dir> progress rebaseline <value>
 //   node cycle.mjs <doc-dir> cycle advance
 //
@@ -28,7 +28,7 @@ import { spawnSync } from 'node:child_process';
 
 const HEADER_KEYS = [
   'status', 'design-round', 'cycle', 'current-milestone', 'milestones', 'risks',
-  'progress', 'no-progress-cycles', 'rebaselines', 'reentries', 'next-step',
+  'progress', 'progress-step', 'no-progress-cycles', 'rebaselines', 'reentries', 'next-step',
 ];
 const LEDGER_KINDS = ['blocking', 'note', 'out-of-scope'];
 const LEDGER_STATUS = ['open', 'closed', 'rebutted', 'note'];
@@ -87,6 +87,7 @@ function stateCmd(p, args) {
     fields.set('status', '立项中');
     fields.set('design-round', '0/3');
     fields.set('cycle', '0/0');
+    fields.set('progress-step', '1');
     fields.set('no-progress-cycles', '0');
     fields.set('rebaselines', '0');
     fields.set('reentries', '0');
@@ -273,9 +274,11 @@ function progressCmd(p, args) {
     series = series ? `${series}, ${value}` : `${value}`;
     if (prev === null) verdict = 'FIRST';
     else {
-      const improved = prog.direction === 'down' ? value < prev : value > prev;
-      if (improved) { noProgress = 0; verdict = 'PROGRESS'; }
-      else { noProgress += 1; verdict = 'NO-PROGRESS'; }
+      const step = Number(header.fields.get('progress-step') || 1);
+      if (!Number.isFinite(step) || step <= 0) fail(`progress-step must be a positive number, got ${header.fields.get('progress-step')}`);
+      const move = prog.direction === 'down' ? prev - value : value - prev;
+      if (move >= step) { noProgress = 0; verdict = 'PROGRESS'; }
+      else { noProgress += 1; verdict = move > 0 ? `NO-PROGRESS (moved ${move} < step ${step})` : 'NO-PROGRESS'; }
     }
     header.fields.set('no-progress-cycles', String(noProgress));
   }
