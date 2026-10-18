@@ -18,6 +18,7 @@
 //   node cycle.mjs <doc-dir> progress hold <value>        # value recorded with a '~' mark, counter untouched; once per milestone segment
 //   node cycle.mjs <doc-dir> progress rebaseline <value>  # contract-definition defect; refused on the 3rd within a milestone
 //   node cycle.mjs <doc-dir> progress reset <value>       # milestone switch: starts a new segment ('||'), counter reset
+//   node cycle.mjs <doc-dir> progress reset <value> oracle # oracle built: new baseline ('|=') inside the same milestone, cap untouched
 //   node cycle.mjs <doc-dir> cycle advance
 //
 // <doc-dir> is docs/<slug>; the design doc is docs/<slug>/<slug>.md and the
@@ -254,12 +255,12 @@ function parseProgress(value) {
 
 function lastValue(series) {
   const segs = series.split('|').filter((seg) => seg.trim() !== '');
-  const last = (segs[segs.length - 1] || '').split(',').map((s) => s.trim().replace(/~$/, '')).filter(Boolean);
+  const last = (segs[segs.length - 1] || '').replace(/^\s*=/, '').split(',').map((s) => s.trim().replace(/~$/, '')).filter(Boolean);
   return last.length ? Number(last[last.length - 1]) : null;
 }
 
 function progressCmd(p, args) {
-  const [sub, raw] = args;
+  const [sub, raw, mode] = args;
   if (!['append', 'hold', 'rebaseline', 'reset'].includes(sub)) fail('progress append|hold|rebaseline|reset <value>');
   const value = Number(raw);
   if (!Number.isFinite(value)) fail(`progress value must be a number, got ${raw}`);
@@ -271,7 +272,7 @@ function progressCmd(p, args) {
   let verdict;
   if (sub === 'rebaseline') {
     const currentMilestone = series.split('||').pop();
-    const inMilestone = (currentMilestone.match(/\|/g) || []).length;
+    const inMilestone = (currentMilestone.match(/\|(?!=)/g) || []).length;
     if (inMilestone >= 2) fail('third rebaseline in this milestone refused: record the value with `progress append` (counts as no progress) and make the structural change a completion condition');
     series = series ? `${series} | ${value}` : `${value}`;
     header.fields.set('rebaselines', String(Number(header.fields.get('rebaselines') || 0) + 1));
@@ -279,10 +280,11 @@ function progressCmd(p, args) {
     header.fields.set('no-progress-cycles', '0');
     verdict = `REBASELINE #${inMilestone + 1} in this milestone`;
   } else if (sub === 'reset') {
-    series = series ? `${series} || ${value}` : `${value}`;
+    const oracle = mode === 'oracle';
+    series = series ? `${series} ${oracle ? '|=' : '||'} ${value}` : `${value}`;
     noProgress = 0;
     header.fields.set('no-progress-cycles', '0');
-    verdict = 'RESET (new milestone segment)';
+    verdict = oracle ? 'RESET (oracle built, same milestone)' : 'RESET (new milestone segment)';
   } else if (sub === 'hold') {
     const currentMilestone = series.split('||').pop();
     if (/~/.test(currentMilestone)) fail('hold already used in this milestone: record the value with `progress append`');
