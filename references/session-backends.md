@@ -26,7 +26,7 @@
 - 云端后端的权威位置仍是本 skill 的 `sessions/`。
 - 本 skill `sessions/` 里仍留有本地后端的副本，仅在 `launch-local-agent-session` 尚未安装时回退使用。
 
-循环任务的每个角色可以使用不同后端与启动参数。生成任务时对本次运行用到的每个后端各准备一次——任务文件的各启动出口（含 Task 1 的再设计启动）、队列终止句，以及 Task 1 的首启后端；未单独指定的任务使用默认后端，默认后端未指定时为 Cursor Agents Window。
+循环任务的每个角色可以使用不同后端与启动参数。生成任务时对本次运行用到的每个后端各准备一次——任务文件的各启动出口（含立项的再设计启动）、队列终止句，以及立项的首启后端；未单独指定的任务使用默认后端，默认后端未指定时为 Cursor Agents Window。
 
 ## 准备规则
 
@@ -42,7 +42,7 @@
 3. 云端后端从本 skill `sessions/` 复制 `spawn-cloud-agent-session.md` 与 `spawn_cloud_agent.sh`。
 4. shell 脚本必须具有执行权限。
 5. 目标文件已经存在且可正常使用时不覆盖，避免影响仍在执行的旧任务。
-6. 任务文件中的 `{{SESSION_SKILL_DESIGN}}` / `{{SESSION_SKILL_REVIEW}}` / `{{SESSION_SKILL_WORK}}` / `{{SESSION_SKILL_ACCEPT}}` 分别使用 Task 1（立项与再设计）、评审、工作轮、验收轮所选说明文件的仓库相对路径；`{{SESSION_ARGS_*}}` 按 SKILL.md 定义写启动参数后缀，本地后端无额外参数时为 `，启动参数：`-w "$(pwd)"``。
+6. 任务文件中的 `{{SESSION_SKILL_DESIGN}}` / `{{SESSION_SKILL_REVIEW}}` / `{{SESSION_SKILL_WORK}}` / `{{SESSION_SKILL_ACCEPT}}` 分别使用立项（含再设计）、评审、工作轮、验收轮所选说明文件的仓库相对路径；`{{SESSION_ARGS_*}}` 按 SKILL.md 定义写启动参数后缀，本地后端无额外参数时为 `，启动参数：`-w "$(pwd)"``。
 7. 启动下一轮时按 `launch-local-agent-session` 的硬性规则执行脚本；不要手写 `cursor -r`/`-n`，也不要把 prompt 发进当前对话。
 
 ## 启动参数
@@ -63,42 +63,42 @@
 
 ```bash
 bash prompt/skill/new_cursor_agent_session.sh -w "$(pwd)" \
-  "Please execute docs/<slug>/<slug>-task.md Task 1."
+  "Please execute docs/<slug>/<slug>-task.md 立项."
 ```
 
 Cursor2：
 
 ```bash
 bash prompt/skill/new_cursor2_agent_session.sh -w "$(pwd)" \
-  "Please execute docs/<slug>/<slug>-task.md Task 1."
+  "Please execute docs/<slug>/<slug>-task.md 立项."
 ```
 
 Cursor Cloud：
 
 ```bash
 bash prompt/skill/spawn_cloud_agent.sh \
-  "Please execute docs/<slug>/<slug>-task.md Task 1."
+  "Please execute docs/<slug>/<slug>-task.md 立项."
 ```
 
 Waku 指定 harness 与 model（对应任务文件中的「启动参数：`--harness claude --model claude-sonnet-4-6`」）：
 
 ```bash
 bash prompt/skill/new_waku_session.sh --harness claude --model claude-sonnet-4-6 \
-  -w "$(pwd)" "Please execute docs/<slug>/<slug>-task.md Task 1."
+  -w "$(pwd)" "Please execute docs/<slug>/<slug>-task.md 立项."
 ```
 
 Zed（Agent Panel 线程）：
 
 ```bash
 bash prompt/skill/new_zed_session.sh -w "$(pwd)" \
-  "Please execute docs/<slug>/<slug>-task.md Task 1."
+  "Please execute docs/<slug>/<slug>-task.md 立项."
 ```
 
 Claude（桌面 Code session）：
 
 ```bash
 bash prompt/skill/new_claude_session.sh -w "$(pwd)" \
-  "Please execute docs/<slug>/<slug>-task.md Task 1."
+  "Please execute docs/<slug>/<slug>-task.md 立项."
 ```
 
 ## 状态传递
