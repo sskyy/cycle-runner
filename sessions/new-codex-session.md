@@ -1,82 +1,74 @@
 # 启动新的 Codex GUI task
 
-> 循环任务的每一轮必须新建独立 task，并把下一轮的完整 prompt 提交到该 task。当前
-> Codex Desktop 内的 agent 必须使用下方的**原生 task 工具**；不要用 `codex app-server`
-> 加 `codex://threads/<id>` 深链来声称 GUI 已打开同一 task。
+> **权威位置**：`~/.agents/skills/launch-local-agent-session/sessions/`；仓库副本在
+> `prompt/skill/`（`ensure-into-repo.sh codex` 复制）。脚本 `new_codex_session.sh` 与
+> `codex_gui_ax.swift` 必须放在同一目录。
 
-## 首选：Codex Desktop 原生 task 工具
+## 做什么
 
-当当前会话可调用 `codex_app__create_thread` 时，使用它创建新 task。这是循环任务的唯一
-自动化路径：它由 Desktop 创建、带首条 prompt，并可用 `codex_app__navigate_to_codex_page`
-显示同一个 task。
+在 Codex Desktop 里新建一个**由桌面版自己创建并执行**的 task，可在 GUI 中实时观察，并逐次指定：
 
-执行下一轮时：
+| 参数 | 选项 | GUI 中的位置 |
+|---|---|---|
+| 目录 | `-w DIR`（取其目录名作项目名） | 脚本自动信任并用 `codex app DIR` 打开该项目的新聊天页 |
+| 模型 | `--model gpt-6-luna`（标签推导为 “GPT-6 Luna”，`gpt-6.1-sol` → “GPT-6.1 Sol”，`gpt-5.5` → “GPT-5.5”；2026-10 改版前界面写作 “GPT 6 Luna”，脚本会两种拼写都试；可用 `--model-label` 覆盖） | 输入框右下模型按钮 → Select model |
+| 强度 | `--effort low｜medium｜high｜xhigh｜max｜ultra`（别名 `--thinking`） | 同一面板的滑块 |
+| 权限 | `--permission ask｜auto｜full`（`bypass` = `full`） | 输入框左下 “Change permissions” |
 
-1. 使用当前仓库对应的 project，目标环境选 `local`，以便各轮共享当前工作目录和未提交改动。
-2. 调用 `codex_app__create_thread`，将下一轮完整 prompt 原样传为 `prompt`。
-3. 获得 `threadId` 后调用 `codex_app__navigate_to_codex_page` 打开该 task；若 task 创建尚在
-   准备中，先等待取得实际 `threadId`，不得把 `clientThreadId` 当作 thread ID 使用。
-4. 启动成功即可结束当前轮，不必等待新 task 完成。
-
-示意参数（使用实际的 project ID 和下一轮 prompt）：
-
-```text
-create_thread({
-  prompt: "Please execute docs/<slug>/<slug>-task.md <立项|评审|工作轮|验收轮>.",
-  target: { type: "project", projectId: "<current-project-id>", environment: { type: "local" } }
-})
-navigate_to_codex_page({ threadId: "<returned-thread-id>" })
-```
-
-不要传不受当前模型支持的 `thinking` 值。创建后可用 `read_thread` 或 `wait_threads` 核验
-新 task 的首轮已经开始；这是 task 内容的证据，Desktop 导航的返回结果是 GUI 目标的证据。
-
-## 禁用的 App Server 组合
-
-`codex app-server` 可以创建并完成持久线程，`codex://threads/<id>` 也有官方的“打开本地
-对话”语义，但在本机当前 Desktop 版本中两者组合曾打开一个空白 GUI composer，而非刚由
-App Server 创建的线程。它不能满足“prompt 在新 GUI task 中提交”的要求，因此不用于循环
-任务启动。不要因为 `thread/read` 显示完成就把它当作 GUI 成功。
-
-## Shell GUI fallback
-
-仅当当前执行环境没有原生 task 工具时，才运行同目录脚本。它会先用 `codex app` 打开目标
-workspace，再按绝对路径 `/Applications/Codex.app` 激活 Desktop，最后发送 `Cmd+N`、粘贴 prompt、
-回车提交。当前机器的 ChatGPT 与 Codex 共用 bundle id，不能只按 bundle id 选择应用；绝对路径
-确保快捷键不会落到 Cursor 或独立的 ChatGPT 应用。
+未给出的参数沿用输入框当前值。`full` 会触发 Codex 的 “Turn on Full Access?” 确认框，必须显式
+加 `--confirm-full-access`，脚本才会点 Confirm。
 
 ```bash
-# 当前 workspace：只创建空 task
-bash prompt/skill/new_codex_session.sh
-
-# 当前 workspace：创建并提交 prompt
-bash prompt/skill/new_codex_session.sh \
-  "Please execute docs/<slug>/<slug>-task.md 立项."
-
-# 指定 workspace；多行 prompt 使用 $'...'
-bash prompt/skill/new_codex_session.sh -w /path/to/workspace \
-  $'Please execute docs/<slug>/<slug>-task.md 立项.\nFollow the task protocol exactly.'
+bash "$HOME/.agents/skills/launch-local-agent-session/sessions/new_codex_session.sh" \
+  -w "$(pwd)" --model gpt-6-luna --effort max --permission bypass --confirm-full-access "完整 prompt"
+# 仓库副本：bash prompt/skill/new_codex_session.sh -w "$(pwd)" --model gpt-6-luna --effort max "完整 prompt"
 ```
 
-该 fallback 需要 macOS、`/Applications/Codex.app`、Codex CLI、Python 3 和运行脚本宿主的辅助功能权限。Codex 的 Web
-输入框不稳定地暴露给 macOS Accessibility，所以脚本只能证明：Desktop 已按 bundle id 在前台、
-新建对话快捷键已发送、prompt 的粘贴和回车事件已发送。它不能从 shell 读取 composer 来证明
-焦点；运行后必须在新 task 中目视确认首条 prompt。
+## 原理
 
-## 已验证的原生烟测（2026-08-07）
+不看屏幕。`codex_gui_ax.swift`（首次运行时用 `swiftc` 编译并缓存到
+`~/.cache/launch-local-agent-session/`）读取桌面版的 Accessibility 树，按名字找到控件并读回状态，
+用真实鼠标事件点击（Accessibility 自带的点击在该网页界面里无效）：
 
-使用 `create_thread`（`local` 环境）再 `navigate_to_codex_page` 新建 task
-`019fd7e5-6672-7211-b7ce-93da0ad675b2`，首条 prompt 已完成，并返回：
+- 强度：先读输入框右下芯片（如 “GPT-6 Luna Max”；按 “GPT” / “Kimi” / “GLM” 前缀找，不带空格），已等于目标就整段跳过弹层；否则按固定档位顺序直接点目标档位的位置并回读校验，失败才退回沿滑块逐档点击。建议在 `~/.codex/config.toml` 顶层设置 `model` 与 `model_reasoning_effort`，新会话默认就是目标值，通常走快路径。
+  标签与 CLI 值对应：Light=`low`、Standard=`medium`、Extended=`high`、Extra High=`xhigh`、Max=`max`。
+- 项目行需先悬停，“Start new chat in …” 按钮才有可点击区域。
+- prompt 用 Accessibility 直接写进输入框（不占剪贴板），再点 Send。
+- 提交后读 `~/.codex/sessions/**/rollout-*.jsonl` 的 `turn_context`，只认 cwd 与 `-w` 一致的 rollout（并发启动时不会串到别人的），与请求逐项比对（model、
+  effort；`full` 还要求 approval=`never` 且 sandbox=`danger-full-access`），打印实际值。
 
-```text
-codex_gui_native_binding_final_20260807_ok
-```
+退出码：0 已核对；64 用法；2 环境；3 项目；4 权限；5 模型/强度；6 输入/发送；7 rollout 缺失或与请求不符。
 
-此前 App Server 测试的“完成”记录只证明服务端线程持久化，未作为 GUI 成功证据保留。
+## 前置条件
 
-同日的 shell fallback 烟测创建 task `019fd7ed-7dcc-7e20-bc24-e3123c336fe7`，并提交了
-唯一的测试 prompt；该 task 的持久首轮已完成并返回：
+- macOS；运行脚本的进程有「辅助功能」权限；已安装 Xcode Command Line Tools（`swiftc`）。
+- 新目录无需手工登记或信任：脚本在 `~/.codex/config.toml` 追加 `[projects."<目录>"] trust_level = "trusted"`（幂等、原子替换），再执行 `codex app <目录>`，窗口会直接切到该项目的新聊天页（不依赖侧栏，侧栏会折叠项目）。
+- 脚本全程真实操作鼠标键盘，所以持有全局锁 `~/.cache/launch-local-agent-session/gui.lock`（mkdir + pid，持有进程已死则回收）：多个脚本并发调用会自动排队，一个一个发送，不会互相抢焦点；发送后立即释放，rollout 核对在锁外进行。
+- `max` / `ultra` 默认不在滑块中：在 Codex 设置 → Agent → Model features → Available reasoning
+  efforts 里打开。模型目录里声明了 `max` 也不够，不是自定义 endpoint 的问题。
+- 窗口需要在某个显示器上可见（不要最小化）。
 
-```text
-codex_gui_fallback_bundle_id_20260807_ok
-```
+## 已验证与限制
+
+- 2026-09-29 实测（rollout 回读）：`gpt-6-luna` + `max` + `full` → `never` / `danger-full-access`；
+  `low` / `medium` / `high` + `auto` → `on-request` / `workspace-write`；`gpt-6-sol` + `xhigh`；
+  项目在 `issue-892-giant-seam-split` 与 `mesh-wt` 间切换。
+- 依赖界面元素的名称；桌面版改版或界面语言变化时需更新 `codex_gui_ax.swift` 与脚本里的标签。
+- 会真实操纵鼠标和键盘焦点，运行期间不要操作该窗口。
+- `ask` / `auto` 只核对到 rollout 已生成，不逐项比对 approval 值。
+
+## 为什么不用其他方式（2026-09-29 实测）
+
+- `codex exec`：命令行首轮占着线程的唯一 writer，运行中打开 `codex://threads/<id>` 报
+  “already has an active writer”，GUI 看不到实时过程，只能在首轮结束后接管。
+- 深链：只有 `codex://threads/<id>`、设置、插件等路由，不能新建线程，也不接受 prompt / 模型。
+- 原生 `codex_app__create_thread`：只有 Codex 会话内的 MCP 能调用（走会话专属管道并要求调用方 thread id），
+  外部 agent 用不了。Codex 会话内可以优先用它，参数见其工具说明。
+- 桌面版本机 IPC（`~/.codex/ipc/ipc.sock`）的 `thread-follower-start-turn`：请求版本号取对后仍返回
+  `no-client-found`，未走通。
+
+## 变更记录
+
+- 2026-10-07：桌面版改版为统一的 “ChatGPT” 应用（窗口标题 ChatGPT，`Switch mode, current mode: Codex`），模型按钮改叫 “GPT-6 Luna Max”（带连字符，模型列表为 GPT-6.1 Sol / GPT-6 Astra / GPT-6 Sol / GPT-6 Luna / GPT-5.6 Sol / Terra / Luna / GPT-5.5）。旧脚本按 `"GPT "`（带空格）找芯片，在发送前以退出码 5 `model chip not found` 失败（会让所有交接给 Codex 的循环在下一次交接处中断）。修复：芯片按 `GPT`/`Kimi`/`GLM` 前缀查找；标签推导 `gpt-N-xxx` → “GPT-N Xxx”、`gpt-5.5` → “GPT-5.5”，旧拼写 “GPT N Xxx” 作为备选。实测（rollout 回读，exit 0）：`gpt-6-sol` + `low` + `auto` → `on-request` / `workspace-write`（走模型切换与强度滑块）；`gpt-6-luna` + `max` + `full` → `never` / `danger-full-access`（切回，含 Full Access 确认）；同参数再跑一次走 “already GPT-6 Luna Max” 快路径。强度滑块与 “Select model” 菜单名称没变。
+- 2026-10-01：自动信任与 `codex app` 打开项目；全局 GUI 锁；强度快路径；prompt 可见性校验改为只取首行前 30 字符（原 `cut -c1-30` 逐行截取，多行 prompt 会误判）；rollout 核对按 cwd 过滤。五个并发启动实测通过。
+- 2026-10-19：回读修正。此前第 5 步在全部 rollout 里找「含提示词前 40 字且 cwd 相同」的文件，启动者自己是 Codex 会话时，它的 rollout 里引用了同一提示词（启动命令就在工具调用里），于是误选到当前会话，再按模型不符退出 7；三个循环每次交接都要人工核验（issue-1670/1542/1496 v3 的 retro）。现在在点 Send 前记下已存在的 rollout 文件集合，只在新文件里找，并要求提示词出现在该线程自己的用户消息（`event_msg/user_message` 或 `response_item` 的 user 角色）里，不接受只在工具调用参数里引用的文件。可用 `CODEX_SESSIONS_ROOT` 指向假目录做单元测试。
