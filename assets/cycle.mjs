@@ -9,7 +9,7 @@
 //   node cycle.mjs <doc-dir> state get <key>
 //   node cycle.mjs <doc-dir> state set <key> <value...>
 //   node cycle.mjs <doc-dir> state init <key=value>...
-//   node cycle.mjs <doc-dir> snapshot <label>
+//   node cycle.mjs <doc-dir> snapshot <label>             # copies the design, ledger and reference/ to evidence/snapshots/<label>/
 //   node cycle.mjs <doc-dir> diff <labelA> [<labelB>]
 //   node cycle.mjs <doc-dir> ledger add <id> <kind> <target> <text...>
 //   node cycle.mjs <doc-dir> ledger set <id> <status> [note...]
@@ -50,6 +50,7 @@ function paths(docDir) {
     design: path.join(dir, `${slug}.md`),
     ledger: path.join(dir, `${slug}-review.md`),
     evidence: path.join(dir, 'evidence'),
+    snapshots: path.join(dir, 'evidence', 'snapshots'),
     reference: path.join(dir, 'reference'),
   };
 }
@@ -138,7 +139,7 @@ function copyDir(src, dst) {
 function snapshotCmd(p, args) {
   const [label] = args;
   if (!label) fail('snapshot needs a label, e.g. design-d1');
-  const dst = path.join(p.evidence, label);
+  const dst = path.join(p.snapshots, label);
   if (fs.existsSync(dst)) fail(`snapshot ${label} already exists; labels are immutable`);
   fs.mkdirSync(dst, { recursive: true });
   fs.copyFileSync(p.design, path.join(dst, `${p.slug}.md`));
@@ -150,8 +151,8 @@ function snapshotCmd(p, args) {
 function diffCmd(p, args) {
   const [a, b] = args;
   if (!a) fail('diff needs at least one snapshot label');
-  const fileA = path.join(p.evidence, a, `${p.slug}.md`);
-  const fileB = b ? path.join(p.evidence, b, `${p.slug}.md`) : p.design;
+  const fileA = path.join(p.snapshots, a, `${p.slug}.md`);
+  const fileB = b ? path.join(p.snapshots, b, `${p.slug}.md`) : p.design;
   for (const f of [fileA, fileB]) if (!fs.existsSync(f)) fail(`missing: ${f}`);
   const r = spawnSync('diff', ['-u', fileA, fileB], { encoding: 'utf8' });
   if (r.error) fail(`diff unavailable: ${r.error.message}`);
@@ -174,7 +175,7 @@ function readLedger(p) {
   const text = fs.readFileSync(p.ledger, 'utf8');
   const rows = [];
   for (const line of text.split('\n')) {
-    const m = line.match(/^\|\s*([A-Za-z]+-\d+)\s*\|/);
+    const m = line.match(/^\|\s*([A-Za-z]+(?:-[A-Za-z0-9]+)+)\s*\|/);
     if (m) rows.push({ id: m[1], line });
   }
   return { text, rows };
