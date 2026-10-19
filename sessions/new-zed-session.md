@@ -118,7 +118,7 @@ bash "$HOME/.agents/skills/launch-local-agent-session/scripts/launch.sh" \
 
 ```bash
 bash prompt/skill/new_zed_session.sh -w "$(git rev-parse --show-toplevel)" \
-  "Please execute docs/<slug>/<slug>-task.md Task 1 additional task <N>."
+  "Please execute docs/<slug>/<slug>-task.md <立项|评审|工作轮|验收轮>."
 ```
 
 **prompt 保持协议原句一句话，不要塞附加说明。**

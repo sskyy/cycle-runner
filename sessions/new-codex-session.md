@@ -22,7 +22,7 @@
 
 ```text
 create_thread({
-  prompt: "Please execute docs/<slug>/<slug>-task.md Task 1 additional task N.",
+  prompt: "Please execute docs/<slug>/<slug>-task.md <立项|评审|工作轮|验收轮>.",
   target: { type: "project", projectId: "<current-project-id>", environment: { type: "local" } }
 })
 navigate_to_codex_page({ threadId: "<returned-thread-id>" })
@@ -51,11 +51,11 @@ bash prompt/skill/new_codex_session.sh
 
 # 当前 workspace：创建并提交 prompt
 bash prompt/skill/new_codex_session.sh \
-  "Please execute docs/<slug>/<slug>-task.md Task 1."
+  "Please execute docs/<slug>/<slug>-task.md 立项."
 
 # 指定 workspace；多行 prompt 使用 $'...'
 bash prompt/skill/new_codex_session.sh -w /path/to/workspace \
-  $'Please execute docs/<slug>/<slug>-task.md Task 1.\nFollow the task protocol exactly.'
+  $'Please execute docs/<slug>/<slug>-task.md 立项.\nFollow the task protocol exactly.'
 ```
 
 该 fallback 需要 macOS、`/Applications/Codex.app`、Codex CLI、Python 3 和运行脚本宿主的辅助功能权限。Codex 的 Web
