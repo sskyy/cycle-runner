@@ -16,9 +16,9 @@
 //   node cycle.mjs <doc-dir> ledger list [status]
 //   node cycle.mjs <doc-dir> progress append <value>      # progress only if the move is >= progress-step
 //   node cycle.mjs <doc-dir> progress hold <value>        # value recorded with a '~' mark, counter untouched; once per milestone segment
-//   node cycle.mjs <doc-dir> progress rebaseline <value>  # contract-definition defect; refused on the 3rd within a milestone
+//   node cycle.mjs <doc-dir> progress rebaseline <value>  # reviewed definition change; preserves history and resets comparison
 //   node cycle.mjs <doc-dir> progress reset <value>       # milestone switch: starts a new segment ('||'), counter reset
-//   node cycle.mjs <doc-dir> progress reset <value> oracle # oracle built: new baseline ('|=') inside the same milestone, cap untouched
+//   node cycle.mjs <doc-dir> progress reset <value> oracle # oracle built: new baseline ('|=') inside the same milestone
 //   node cycle.mjs <doc-dir> cycle advance
 //
 // <doc-dir> is docs/<slug>; the design doc is docs/<slug>/<slug>.md and the
@@ -274,7 +274,6 @@ function progressCmd(p, args) {
   if (sub === 'rebaseline') {
     const currentMilestone = series.split('||').pop();
     const inMilestone = (currentMilestone.match(/\|(?!=)/g) || []).length;
-    if (inMilestone >= 2) fail('third rebaseline in this milestone refused: record the value with `progress append` (counts as no progress) and make the structural change a completion condition');
     series = series ? `${series} | ${value}` : `${value}`;
     header.fields.set('rebaselines', String(Number(header.fields.get('rebaselines') || 0) + 1));
     noProgress = 0;
@@ -318,6 +317,7 @@ function cycleCmd(p, args) {
   const C = Number(m[2]);
   header.fields.set('cycle', `${c}/${C}`);
   writeHeader(p.design, header);
+  // C is an estimate: the signal requests independent review, never a terminal status.
   process.stdout.write(`cycle ${c}/${C}${C > 0 && c >= C ? ' CEILING' : ''}\n`);
 }
 
