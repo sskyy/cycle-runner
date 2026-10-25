@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// cycle.mjs — bookkeeping runner for cyclic-task loops (v1).
+// cycle.mjs — bookkeeping runner for cyclic-task loops (v2).
 //
 // Keeps the state header, design snapshots, the review ledger and the
-// progress series of one loop so that the task texts never do arithmetic.
-// Dependency-free; Node >= 20.
+// progress series of one loop. It records facts only: it never decides
+// whether a cycle made progress and never signals a review; those are
+// judgments of the roles that read these facts. Dependency-free; Node >= 20.
 //
 // Usage:
 //   node cycle.mjs <doc-dir> state get <key>
@@ -14,11 +15,8 @@
 //   node cycle.mjs <doc-dir> ledger add <id> <kind> <target> <text...>
 //   node cycle.mjs <doc-dir> ledger set <id> <status> [note...]
 //   node cycle.mjs <doc-dir> ledger list [status]
-//   node cycle.mjs <doc-dir> progress append <value>      # progress only if the move is >= progress-step
-//   node cycle.mjs <doc-dir> progress hold <value>        # value recorded with a '~' mark, counter untouched; once per milestone segment
-//   node cycle.mjs <doc-dir> progress rebaseline <value>  # reviewed definition change; preserves history and resets comparison
-//   node cycle.mjs <doc-dir> progress reset <value>       # milestone switch: starts a new segment ('||'), counter reset
-//   node cycle.mjs <doc-dir> progress reset <value> oracle # oracle built: new baseline ('|=') inside the same milestone
+//   node cycle.mjs <doc-dir> progress append <value>                   # record this cycle's measured value
+//   node cycle.mjs <doc-dir> progress redefine "<name>(down|up)" <value> # new measure: keeps the old series before '||'
 //   node cycle.mjs <doc-dir> cycle advance
 //
 // <doc-dir> is docs/<slug>; the design doc is docs/<slug>/<slug>.md and the
@@ -31,7 +29,7 @@ import { spawnSync } from 'node:child_process';
 
 const HEADER_KEYS = [
   'status', 'design-round', 'cycle', 'current-milestone', 'milestones', 'risks',
-  'progress', 'progress-step', 'no-progress-cycles', 'rebaselines', 'reentries', 'next-step',
+  'progress', 'reentries', 'next-step',
 ];
 const LEDGER_KINDS = ['blocking', 'note', 'out-of-scope'];
 const LEDGER_STATUS = ['open', 'closed', 'rebutted', 'note'];
@@ -91,9 +89,6 @@ function stateCmd(p, args) {
     fields.set('status', '立项中');
     fields.set('design-round', '0/3');
     fields.set('cycle', '0/0');
-    fields.set('progress-step', '1');
-    fields.set('no-progress-cycles', '0');
-    fields.set('rebaselines', '0');
     fields.set('reentries', '0');
     fields.set('next-step', '待评审');
     for (const kv of [key, ...rest].filter(Boolean)) {
@@ -247,64 +242,38 @@ function ledgerCmd(p, args) {
 
 // ---------- progress and cycles ----------
 
+const MEASURE = /^(.+?)\((down|up)\)$/;
+
 function parseProgress(value) {
-  // "<name>(<down|up>): v0, v1 | v2, v3"   '|' marks a re-baseline boundary
+  // "<name>(<down|up>): v0, v1 || v2"   '||' separates earlier measures from the current one
   const m = value.match(/^(.+?)\((down|up)\):\s*(.*)$/);
   if (!m) fail(`progress field must look like "<name>(down|up): v0, v1", got "${value}"`);
   return { name: m[1].trim(), direction: m[2], series: m[3].trim() };
 }
 
-function lastValue(series) {
-  const segs = series.split('|').filter((seg) => seg.trim() !== '');
-  const last = (segs[segs.length - 1] || '').replace(/^\s*=/, '').split(',').map((s) => s.trim().replace(/~$/, '')).filter(Boolean);
-  return last.length ? Number(last[last.length - 1]) : null;
-}
-
 function progressCmd(p, args) {
-  const [sub, raw, mode] = args;
-  if (!['append', 'hold', 'rebaseline', 'reset'].includes(sub)) fail('progress append|hold|rebaseline|reset <value>');
-  const value = Number(raw);
-  if (!Number.isFinite(value)) fail(`progress value must be a number, got ${raw}`);
+  const [sub, ...rest] = args;
   const header = readHeader(p.design);
-  const prog = parseProgress(header.fields.get('progress') || '');
-  const prev = lastValue(prog.series);
-  let series = prog.series;
-  let noProgress = Number(header.fields.get('no-progress-cycles') || 0);
-  let verdict;
-  if (sub === 'rebaseline') {
-    const currentMilestone = series.split('||').pop();
-    const inMilestone = (currentMilestone.match(/\|(?!=)/g) || []).length;
-    series = series ? `${series} | ${value}` : `${value}`;
-    header.fields.set('rebaselines', String(Number(header.fields.get('rebaselines') || 0) + 1));
-    noProgress = 0;
-    header.fields.set('no-progress-cycles', '0');
-    verdict = `REBASELINE #${inMilestone + 1} in this milestone`;
-  } else if (sub === 'reset') {
-    const oracle = mode === 'oracle';
-    series = series ? `${series} ${oracle ? '|=' : '||'} ${value}` : `${value}`;
-    noProgress = 0;
-    header.fields.set('no-progress-cycles', '0');
-    verdict = oracle ? 'RESET (oracle built, same milestone)' : 'RESET (new milestone segment)';
-  } else if (sub === 'hold') {
-    const currentMilestone = series.split('||').pop();
-    if (/~/.test(currentMilestone)) fail('hold already used in this milestone: record the value with `progress append`');
-    series = series ? `${series}, ${value}~` : `${value}~`;
-    verdict = 'HOLD (counter untouched)';
+  if (sub === 'append') {
+    const value = Number(rest[0]);
+    if (!Number.isFinite(value)) fail(`progress value must be a number, got ${rest[0]}`);
+    const prog = parseProgress(header.fields.get('progress') || '');
+    const series = prog.series ? `${prog.series}, ${value}` : `${value}`;
+    header.fields.set('progress', `${prog.name}(${prog.direction}): ${series}`);
+  } else if (sub === 'redefine') {
+    const [measure, raw] = rest;
+    const mm = (measure || '').match(MEASURE);
+    if (!mm) fail('progress redefine "<name>(down|up)" <value>');
+    const value = Number(raw);
+    if (!Number.isFinite(value)) fail(`progress value must be a number, got ${raw}`);
+    const old = header.fields.get('progress') || '';
+    const series = old ? parseProgress(old).series : '';
+    header.fields.set('progress', `${mm[1].trim()}(${mm[2]}): ${series ? `${series} || ${value}` : value}`);
   } else {
-    series = series ? `${series}, ${value}` : `${value}`;
-    if (prev === null) verdict = 'FIRST';
-    else {
-      const step = Number(header.fields.get('progress-step') || 1);
-      if (!Number.isFinite(step) || step <= 0) fail(`progress-step must be a positive number, got ${header.fields.get('progress-step')}`);
-      const move = prog.direction === 'down' ? prev - value : value - prev;
-      if (move >= step) { noProgress = 0; verdict = 'PROGRESS'; }
-      else { noProgress += 1; verdict = move > 0 ? `NO-PROGRESS (moved ${move} < step ${step})` : 'NO-PROGRESS'; }
-    }
-    header.fields.set('no-progress-cycles', String(noProgress));
+    fail('progress append <value> | progress redefine "<name>(down|up)" <value>');
   }
-  header.fields.set('progress', `${prog.name}(${prog.direction}): ${series}`);
   writeHeader(p.design, header);
-  process.stdout.write(`${verdict} ${prog.name}: ${prev === null ? '-' : prev} -> ${value}; no-progress-cycles=${noProgress}\n`);
+  process.stdout.write(`progress: ${header.fields.get('progress')}\n`);
 }
 
 function cycleCmd(p, args) {
@@ -314,18 +283,19 @@ function cycleCmd(p, args) {
   const m = (header.fields.get('cycle') || '').match(/^(\d+)\/(\d+)$/);
   if (!m) fail('cycle field must look like c/C');
   const c = Number(m[1]) + 1;
-  const C = Number(m[2]);
-  header.fields.set('cycle', `${c}/${C}`);
+  header.fields.set('cycle', `${c}/${m[2]}`);
   writeHeader(p.design, header);
-  // C is an estimate: the signal requests independent review, never a terminal status.
-  process.stdout.write(`cycle ${c}/${C}${C > 0 && c >= C ? ' CEILING' : ''}\n`);
+  // C is an estimate the roles compare against; reaching it triggers nothing here.
+  process.stdout.write(`cycle ${c}/${m[2]}\n`);
 }
 
 // ---------- main ----------
 
 const [docDir, cmd, ...args] = process.argv.slice(2);
 if (!docDir || !cmd) {
-  process.stderr.write(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 22).map((l) => l.replace(/^\/\/ ?/, '')).join('\n') + '\n');
+  const lines = fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1);
+  const usage = lines.slice(0, lines.findIndex((l) => !l.startsWith('//')));
+  process.stderr.write(usage.map((l) => l.replace(/^\/\/ ?/, '')).join('\n') + '\n');
   process.exit(2);
 }
 const p = paths(docDir);
